@@ -46,7 +46,7 @@ $VERSION = "2018-12-01";
 print "zap2xml ($VERSION)\nCommand line: $0 " .  join(" ",@ARGV) . "\n";
 
 %options=();
-getopts("?aA:bB:c:C:d:DeE:Fgi:IjJ:l:Lm:Mn:N:o:Op:P:qRr:s:S:t:Tu:UwWxY:zZ:89",\%options);
+getopts("?aA:bB:c:C:d:DeE:Fgh:i:IjJ:l:Lm:Mn:N:o:Op:P:qRr:s:S:t:Tu:UwWxY:zZ:89",\%options);
 
 $homeDir = $ENV{HOME};
 $homeDir = $ENV{USERPROFILE} if !defined($homeDir);
@@ -159,6 +159,24 @@ $tvgMapiRoot = 'http://mapi.tvguide.com/';
 $tvgurl = 'https://www.tvguide.com/';
 $tvgspritesurl = 'http://static.tvgcdn.net/sprites/';
 $retries = 20 if $retries > 20; # Too many
+
+my %channels = ();
+$chanFile = $options{h} if defined $options{h};
+if (open (CHAN, $chanFile))
+{
+  &pout("Reading channel file: $chanFile\n");
+  while (<CHAN>)
+  {
+    s/#.*//; # comments
+    if (/^\s*$/i)                            { }
+    elsif (/^\s*(\d+)/)                      { $channels{$1} = 1; }
+    else
+    {
+      die "Oddline in channel file \"$chanFile\".\n\t$_";
+    }
+  }
+  close (CHAN);
+}
 
 my %programs = ();
 my $cp;
@@ -1287,7 +1305,8 @@ sub parseJSON {
   my %zapStarred=();
   foreach $s (@$sts) {
 
-    if (defined($s->{'channelId'})) {
+    if (defined($s->{'channelId'}) &&
+      (defined($chanFile) && defined($s->{'channelNo'}) ? $channels{$s->{'channelNo'}} == 1 : 1)) {
       if (!$allChan && scalar(keys %zapFavorites)) {
 	if ($zapFavorites{$s->{channelId}}) {
           if ($options{8}) {
@@ -1588,6 +1607,7 @@ zap2xml <zap2xml\@gmail.com> ($VERSION)
   -z = use tvguide.com instead of gracenote.com
   -a = output all channels (not just favorites) 
   -j = add "series" category to all non-movie programs
+  -h <channel file>
 END
 sleep(5) if ($^O eq 'MSWin32');
 exit 0;
